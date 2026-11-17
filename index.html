@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="de" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Bayazit BTC-Terminal</title>
+<meta name="theme-color" content="#0a0e14">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="BTC-Terminal">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --btc:#f7931a; --up:#22c55e; --down:#ef4444; --blue:#38bdf8; --violet:#a78bfa; --teal:#2dd4bf; --yellow:#facc15;
+}
+[data-theme="dark"]{
+  --bg:#0a0e14; --bg2:#0f141c; --tile:#121923; --tile2:#18212d; --line:#1f2a38;
+  --txt:#e6edf3; --mut:#8b98a8; --dim:#5b6878; --grid:rgba(139,152,168,.12);
+}
+[data-theme="light"]{
+  --bg:#eef2f7; --bg2:#e4e9f0; --tile:#ffffff; --tile2:#f5f7fa; --line:#d8dee8;
+  --txt:#0f172a; --mut:#526072; --dim:#8a96a6; --grid:rgba(15,23,42,.08);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--bg);color:var(--txt);font-family:Inter,system-ui,sans-serif;-webkit-tap-highlight-color:transparent}
+body{min-height:100vh;padding:calc(14px + env(safe-area-inset-top)) calc(14px + env(safe-area-inset-right)) calc(20px + env(safe-area-inset-bottom)) calc(14px + env(safe-area-inset-left))}
+.mono{font-family:"JetBrains Mono",ui-monospace,monospace}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+
+/* Kopfzeile */
+header{display:flex;align-items:center;gap:10px;flex-wrap:wrap;max-width:1200px;margin:0 auto 14px}
+.logo{display:flex;align-items:center;gap:10px;margin-right:auto}
+.logo .coin{width:38px;height:38px;border-radius:10px;background:var(--btc);display:grid;place-items:center;color:#111;font-weight:800;font-size:22px;font-family:"JetBrains Mono"}
+.logo h1{font-family:"JetBrains Mono";font-size:16px;letter-spacing:.08em;text-transform:uppercase}
+.logo small{display:block;font-size:11px;color:var(--mut);letter-spacing:.06em;font-family:"JetBrains Mono"}
+.btns{display:flex;gap:8px;flex-wrap:wrap}
+.btn{height:40px;padding:0 12px;border-radius:10px;background:var(--tile);border:1px solid var(--line);display:flex;align-items:center;gap:7px;font-size:13px;font-weight:600}
+.btn:active{transform:scale(.97)}
+.btn svg{width:18px;height:18px}
+.btn.on{border-color:var(--teal);color:var(--teal)}
+.btn.lock{background:var(--btc);color:#111;border-color:var(--btc)}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--dim);display:inline-block}
+.dot.live{background:var(--up);box-shadow:0 0 0 0 rgba(34,197,94,.6);animation:pulse 1.8s infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(34,197,94,.55)}70%{box-shadow:0 0 0 8px rgba(34,197,94,0)}100%{box-shadow:0 0 0 0 rgba(34,197,94,0)}}
+
+/* Bento-Raster */
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;max-width:1200px;margin:0 auto}
+.tile{background:var(--tile);border:1px solid var(--line);border-radius:16px;padding:16px;position:relative;overflow:hidden;min-width:0}
+.tile::before{content:"";position:absolute;left:0;top:0;right:0;height:3px;background:var(--acc,var(--btc));opacity:.9}
+.tile h2{font-family:"JetBrains Mono";font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--acc,var(--btc));margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.big{grid-column:span 2;grid-row:span 2}
+.wide{grid-column:span 2}
+.full{grid-column:1/-1}
+@media(max-width:900px){.grid{grid-template-columns:repeat(2,1fr)}.big{grid-column:1/-1;grid-row:auto}.wide{grid-column:1/-1}}
+@media(max-width:480px){.btn .lbl{display:none}}
+
+/* Kurs-Kachel */
+.price{font-family:"JetBrains Mono";font-weight:800;font-size:clamp(38px,7vw,64px);letter-spacing:-.02em;line-height:1.05;transition:color .4s}
+.price.flash-up{color:var(--up)} .price.flash-down{color:var(--down)}
+.sub{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:8px}
+.chip{font-family:"JetBrains Mono";font-weight:700;font-size:14px;padding:4px 10px;border-radius:8px}
+.chip.up{background:rgba(34,197,94,.14);color:var(--up)} .chip.down{background:rgba(239,68,68,.14);color:var(--down)}
+.alt{font-family:"JetBrains Mono";color:var(--mut);font-size:14px}
+.seg{display:inline-flex;background:var(--tile2);border:1px solid var(--line);border-radius:9px;padding:3px;gap:2px}
+.seg button{font-family:"JetBrains Mono";font-size:12px;font-weight:700;padding:5px 10px;border-radius:6px;color:var(--mut)}
+.seg button.act{background:var(--btc);color:#111}
+.chartwrap{position:relative;height:230px;margin-top:14px}
+canvas{display:block;width:100%;height:100%}
+.row{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:12px;flex-wrap:wrap}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}
+.stat{background:var(--tile2);border:1px solid var(--line);border-radius:10px;padding:9px 10px}
+.stat span{display:block;font-size:10px;color:var(--mut);text-transform:uppercase;letter-spacing:.08em;font-family:"JetBrains Mono"}
+.stat b{font-family:"JetBrains Mono";font-size:14px;font-weight:700;white-space:nowrap}
+
+.kv{font-family:"JetBrains Mono";font-size:26px;font-weight:800;line-height:1.1}
+.kl{color:var(--mut);font-size:12px;margin-top:4px}
+.mini{display:flex;justify-content:space-between;font-family:"JetBrains Mono";font-size:13px;padding:6px 0;border-top:1px dashed var(--line)}
+.mini:first-of-type{border-top:0}
+.mini span{color:var(--mut)}
+.bar{height:8px;border-radius:5px;background:var(--tile2);overflow:hidden;margin-top:10px;border:1px solid var(--line)}
+.bar i{display:block;height:100%;background:linear-gradient(90deg,var(--btc),var(--yellow));border-radius:5px;transition:width .8s}
+.gauge{width:100%;max-width:220px;display:block;margin:0 auto}
+.clock{font-family:"JetBrains Mono";font-size:30px;font-weight:800}
+.foot{max-width:1200px;margin:14px auto 0;color:var(--dim);font-size:11px;font-family:"JetBrains Mono";display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px}
+.err{color:var(--down)}
+
+/* Sperrbildschirm */
+#lock{position:fixed;inset:0;z-index:50;background:#000;color:#e6edf3;display:none;flex-direction:column;align-items:center;justify-content:center;gap:10px;touch-action:none;user-select:none;-webkit-user-select:none;padding:20px}
+#lock.show{display:flex}
+#lock .lp{font-family:"JetBrains Mono";font-weight:800;font-size:clamp(48px,14vw,140px);color:var(--btc);letter-spacing:-.02em}
+#lock .lc{font-family:"JetBrains Mono";font-size:clamp(18px,4vw,30px);color:#8b98a8}
+#lock .lt{font-family:"JetBrains Mono";font-size:clamp(28px,7vw,60px);color:#e6edf3;font-weight:700}
+#lock .hold{position:absolute;bottom:calc(30px + env(safe-area-inset-bottom));display:flex;flex-direction:column;align-items:center;gap:8px;color:#5b6878;font-size:13px}
+#lock .ring{width:74px;height:74px;border-radius:50%;display:grid;place-items:center;background:conic-gradient(var(--btc) var(--p,0%), #1f2a38 0);transition:background .05s}
+#lock .ring div{width:62px;height:62px;border-radius:50%;background:#000;display:grid;place-items:center}
+#lock .ring svg{width:26px;height:26px;color:var(--btc)}
+#lock .wl{position:absolute;top:calc(20px + env(safe-area-inset-top));font-family:"JetBrains Mono";font-size:12px;color:#5b6878}
+#lock.dim{filter:brightness(.55)}
+
+/* Widget-Modus */
+body.widget header,body.widget .grid,body.widget .foot{display:none}
+#widget{display:none}
+body.widget #widget{display:block}
+.wcard{max-width:380px;margin:0 auto;background:var(--tile);border:1px solid var(--line);border-radius:22px;padding:18px;position:relative;overflow:hidden}
+.wcard::before{content:"";position:absolute;left:0;top:0;right:0;height:3px;background:var(--btc)}
+.wtop{display:flex;align-items:center;justify-content:space-between}
+.wtop .t{display:flex;gap:8px;align-items:center;font-family:"JetBrains Mono";font-size:12px;font-weight:700;letter-spacing:.1em;color:var(--btc)}
+.wprice{font-family:"JetBrains Mono";font-size:40px;font-weight:800;margin-top:8px}
+.wspark{height:70px;margin-top:8px}
+.wfoot{display:flex;justify-content:space-between;font-family:"JetBrains Mono";font-size:12px;color:var(--mut);margin-top:8px}
+.wback{margin:14px auto 0;display:flex;justify-content:center;gap:8px}
+
+/* Hinweis-Box */
+#toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom));transform:translateX(-50%) translateY(120px);background:var(--tile);border:1px solid var(--line);padding:10px 16px;border-radius:12px;font-size:13px;z-index:60;transition:transform .3s;max-width:90vw;text-align:center}
+#toast.show{transform:translateX(-50%) translateY(0)}
+#help{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:55;display:none;align-items:center;justify-content:center;padding:20px}
+#help.show{display:flex}
+#help .box{background:var(--tile);border:1px solid var(--line);border-radius:16px;padding:20px;max-width:440px;font-size:14px;line-height:1.55}
+#help h3{font-family:"JetBrains Mono";color:var(--btc);margin-bottom:10px;font-size:14px;letter-spacing:.08em;text-transform:uppercase}
+#help ol{padding-left:20px;margin:8px 0}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="coin">₿</div>
+    <div><h1>BTC-Terminal</h1><small><span class="dot" id="liveDot"></span> <span id="liveTxt">verbinde …</span></small></div>
+  </div>
+  <div class="btns">
+    <button class="btn" id="btnWake" title="Bildschirm wach halten">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+      <span class="lbl" id="wakeLbl">Wach: aus</span>
+    </button>
+    <button class="btn" id="btnTheme" title="Hell/Dunkel">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+      <span class="lbl" id="themeLbl">Hell</span>
+    </button>
+    <button class="btn" id="btnWidget" title="Widget-Modus">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="8" height="8" rx="2"/><rect x="13" y="3" width="8" height="8" rx="2"/><rect x="3" y="13" width="8" height="8" rx="2"/><rect x="13" y="13" width="8" height="8" rx="2"/></svg>
+      <span class="lbl">Widget</span>
+    </button>
+    <button class="btn" id="btnFull" title="Vollbild">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
+      <span class="lbl">Vollbild</span>
+    </button>
+    <button class="btn lock" id="btnLock" title="Sperren">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+      <span class="lbl">Sperren</span>
+    </button>
+  </div>
+</header>
+
+<main class="grid">
+  <!-- Kurs -->
+  <section class="tile big" style="--acc:var(--btc)">
+    <h2>Bitcoin · Live-Kurs</h2>
+    <div class="row" style="margin-top:0">
+      <div class="seg" id="curSeg"><button data-c="EUR" class="act">EUR</button><button data-c="USD">USD</button></div>
+      <div class="seg" id="tfSeg"><button data-tf="1d" class="act">24 Std</button><button data-tf="7d">7 Tage</button><button data-tf="30d">30 Tage</button><button data-tf="1y">1 Jahr</button></div>
+    </div>
+    <div class="price" id="price" style="margin-top:14px">—</div>
+    <div class="sub">
+      <span class="chip up" id="chg">—</span>
+      <span class="alt" id="altPrice">—</span>
+    </div>
+    <div class="chartwrap"><canvas id="chart"></canvas></div>
+    <div class="stats">
+      <div class="stat"><span>24h Hoch</span><b id="hi">—</b></div>
+      <div class="stat"><span>24h Tief</span><b id="lo">—</b></div>
+      <div class="stat"><span>24h Volumen</span><b id="vol">—</b></div>
+    </div>
+  </section>
+
+  <!-- Angst & Gier -->
+  <section class="tile" style="--acc:var(--yellow)">
+    <h2>Angst &amp; Gier</h2>
+    <svg class="gauge" viewBox="0 0 200 115" id="gauge">
+      <defs><linearGradient id="gg" x1="0" x2="1"><stop offset="0" stop-color="#ef4444"/><stop offset=".5" stop-color="#facc15"/><stop offset="1" stop-color="#22c55e"/></linearGradient></defs>
+      <path d="M20 100 A80 80 0 0 1 180 100" fill="none" stroke="url(#gg)" stroke-width="14" stroke-linecap="round"/>
+      <line id="needle" x1="100" y1="100" x2="100" y2="34" stroke="currentColor" stroke-width="4" stroke-linecap="round" style="transform-origin:100px 100px;transition:transform 1s"/>
+      <circle cx="100" cy="100" r="7" fill="currentColor"/>
+    </svg>
+    <div style="text-align:center"><div class="kv" id="fng">—</div><div class="kl" id="fngTxt">lädt …</div></div>
+  </section>
+
+  <!-- Uhr -->
+  <section class="tile" style="--acc:var(--blue)">
+    <h2>Uhrzeit</h2>
+    <div class="clock" id="clock">--:--:--</div>
+    <div class="kl" id="date">—</div>
+    <div class="mini" style="margin-top:10px"><span>Bildschirm</span><b id="wakeState">normal</b></div>
+    <div class="mini"><span>Letztes Update</span><b id="lastUp">—</b></div>
+  </section>
+
+  <!-- Markt -->
+  <section class="tile" style="--acc:var(--violet)">
+    <h2>Markt</h2>
+    <div class="kv" id="mcap">—</div><div class="kl">Marktkapitalisierung BTC</div>
+    <div class="mini" style="margin-top:10px"><span>Dominanz</span><b id="dom">—</b></div>
+    <div class="bar"><i id="domBar" style="width:0%"></i></div>
+    <div class="mini" style="margin-top:8px"><span>Gesamtmarkt</span><b id="total">—</b></div>
+  </section>
+
+  <!-- Netzwerk -->
+  <section class="tile" style="--acc:var(--teal)">
+    <h2>Netzwerk</h2>
+    <div class="kv" id="height">—</div><div class="kl">Blockhöhe</div>
+    <div class="mini" style="margin-top:10px"><span>Gebühr schnell</span><b id="feeF">—</b></div>
+    <div class="mini"><span>Gebühr ½ Std</span><b id="feeM">—</b></div>
+    <div class="mini"><span>Gebühr günstig</span><b id="feeS">—</b></div>
+  </section>
+
+  <!-- Halving -->
+  <section class="tile wide" style="--acc:var(--btc)">
+    <h2>Nächstes Halving</h2>
+    <div class="row" style="margin-top:0;align-items:flex-end">
+      <div><div class="kv" id="halvDays">—</div><div class="kl">ungefähr verbleibend</div></div>
+      <div style="text-align:right"><div class="mono" style="font-weight:700" id="halvDate">—</div><div class="kl" id="halvBlocks">—</div></div>
+    </div>
+    <div class="bar"><i id="halvBar" style="width:0%"></i></div>
+    <div class="mini" style="margin-top:8px"><span>Blockbelohnung jetzt → danach</span><b>3,125 → 1,5625 BTC</b></div>
+  </section>
+
+  <!-- Umrechner -->
+  <section class="tile wide" style="--acc:var(--up)">
+    <h2>Umrechner</h2>
+    <div class="stats" style="grid-template-columns:repeat(2,1fr);margin-top:0">
+      <div class="stat"><span>Sats für 1 €</span><b id="satEur">—</b></div>
+      <div class="stat"><span>Sats für 1 $</span><b id="satUsd">—</b></div>
+      <div class="stat"><span>100 € =</span><b id="eur100">—</b></div>
+      <div class="stat"><span>0,01 BTC =</span><b id="btc001">—</b></div>
+    </div>
+  </section>
+</main>
+
+<div class="foot">
+  <span>Daten: Binance · CoinGecko · mempool.space · alternative.me</span>
+  <span id="errLine"></span>
+</div>
+
+<!-- Widget-Ansicht -->
+<div id="widget">
+  <div class="wcard">
+    <div class="wtop"><div class="t"><span class="dot live"></span> BTC / <span id="wCur">EUR</span></div><div class="mono" style="font-size:12px;color:var(--mut)" id="wTime">--:--</div></div>
+    <div class="wprice" id="wPrice">—</div>
+    <div class="wspark"><canvas id="wChart"></canvas></div>
+    <div class="wfoot"><span id="wChg">—</span><span id="wRange">—</span></div>
+  </div>
+  <div class="wback">
+    <button class="btn" id="wBack">← Terminal</button>
+    <button class="btn" id="wHelp">Auf Startbildschirm</button>
+    <button class="btn lock" id="wLock">Sperren</button>
+  </div>
+</div>
+
+<!-- Sperrbildschirm -->
+<div id="lock">
+  <div class="wl" id="lockWake">Bildschirm bleibt an</div>
+  <div class="lt" id="lockTime">--:--</div>
+  <div class="lp" id="lockPrice">—</div>
+  <div class="lc" id="lockChg">—</div>
+  <div class="hold">
+    <div class="ring" id="ring"><div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></div></div>
+    <span>2 Sekunden gedrückt halten zum Entsperren</span>
+  </div>
+</div>
+
+<div id="help"><div class="box">
+  <h3>Als Widget nutzen</h3>
+  <p>Webseiten können kein echtes Startbildschirm-Widget sein. So bekommst du es am nächsten dran:</p>
+  <ol>
+    <li><b>iPhone (Safari):</b> Teilen-Symbol → „Zum Home-Bildschirm“.</li>
+    <li><b>Android (Chrome):</b> Menü ⋮ → „Zum Startbildschirm hinzufügen“ bzw. „App installieren“.</li>
+    <li>Die App öffnet dann direkt im Widget-Modus, wenn du ihn zuletzt benutzt hast.</li>
+  </ol>
+  <p style="margin-top:8px;color:var(--mut)">Tipp: Altes Handy oder Tablet + Widget-Modus + Sperren = BTC-Tischuhr.</p>
+  <div style="text-align:right;margin-top:12px"><button class="btn" id="helpClose">Verstanden</button></div>
+</div></div>
+
+<div id="toast"></div>
+
+<script>
+(() => {
+'use strict';
+const $ = id => document.getElementById(id);
+const store = {
+  get(k, d){ try{ const v = localStorage.getItem('btct_'+k); return v===null?d:JSON.parse(v);}catch(e){return d;} },
+  set(k, v){ try{ localStorage.setItem('btct_'+k, JSON.stringify(v)); }catch(e){} }
+};
+
+/* ---------- Zustand ---------- */
+const S = {
+  cur: store.get('cur','EUR'),
+  tf: store.get('tf','1d'),
+  t: { EUR:null, USD:null },  // Ticker
+  candles: [],
+  lastPrice: null,
+  height: null,
+  wake: store.get('wake', true),
+  wakeLock: null,
+  errors: {}
+};
+
+const fmt = (n, d=0) => n==null||isNaN(n) ? '—' : n.toLocaleString('de-DE',{minimumFractionDigits:d,maximumFractionDigits:d});
+const sym = c => c==='EUR'?'€':'$';
+const money = (n, c, d=0) => n==null ? '—' : (c==='EUR' ? fmt(n,d)+' €' : '$'+fmt(n,d));
+const big = (n, c) => {
+  if(n==null) return '—';
+  const a = Math.abs(n);
+  const s = a>=1e12 ? fmt(n/1e12,2)+' Bio.' : a>=1e9 ? fmt(n/1e9,1)+' Mrd.' : a>=1e6 ? fmt(n/1e6,1)+' Mio.' : fmt(n,0);
+  return c==='EUR' ? s+' €' : '$'+s;
+};
+function toast(msg){ const t=$('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove('show'),2600); }
+function setErr(key, msg){ if(msg) S.errors[key]=msg; else delete S.errors[key]; $('errLine').innerHTML = Object.values(S.errors).map(e=>'<span class="err">'+e+'</span>').join(' · '); }
+async function getJSON(url, ms=10000){
+  const c = new AbortController(); const h = setTimeout(()=>c.abort(), ms);
+  try{ const r = await fetch(url,{signal:c.signal,cache:'no-store'}); if(!r.ok) throw new Error(r.status); return await r.json(); }
+  finally{ clearTimeout(h); }
+}
+
+/* ---------- Theme ---------- */
+function applyTheme(t){
+  document.documentElement.dataset.theme = t;
+  $('themeLbl').textContent = t==='dark' ? 'Hell' : 'Dunkel';
+  document.querySelector('meta[name=theme-color]').content = t==='dark' ? '#0a0e14' : '#eef2f7';
+  store.set('theme', t); drawAll();
+}
+$('btnTheme').onclick = () => applyTheme(document.documentElement.dataset.theme==='dark'?'light':'dark');
+
+/* ---------- Bildschirm wach halten (Wake Lock) ---------- */
+async function requestWake(){
+  if(!('wakeLock' in navigator)){ updateWakeUI('nicht unterstützt'); return false; }
+  try{
+    S.wakeLock = await navigator.wakeLock.request('screen');
+    S.wakeLock.addEventListener('release', () => { S.wakeLock=null; updateWakeUI(); });
+    updateWakeUI(); return true;
+  }catch(e){ updateWakeUI('antippen'); return false; }
+}
+async function releaseWake(){ try{ if(S.wakeLock) await S.wakeLock.release(); }catch(e){} S.wakeLock=null; updateWakeUI(); }
+function updateWakeUI(note){
+  const on = !!S.wakeLock;
+  $('btnWake').classList.toggle('on', on);
+  $('wakeLbl').textContent = on ? 'Wach: an' : 'Wach: aus';
+  $('wakeState').textContent = on ? 'bleibt an' : (note || (S.wake ? 'wartet …' : 'normal'));
+  $('wakeState').style.color = on ? 'var(--teal)' : '';
+  $('lockWake').textContent = on ? 'Bildschirm bleibt an' : 'Achtung: Bildschirmschoner aktiv';
+}
+$('btnWake').onclick = async () => {
+  if(S.wakeLock){ S.wake=false; store.set('wake',false); await releaseWake(); toast('Bildschirmschoner wieder normal'); }
+  else { S.wake=true; store.set('wake',true); if(await requestWake()) toast('Bildschirm bleibt an, solange das Terminal offen ist'); else toast('Dein Browser erlaubt das hier leider nicht'); }
+};
+document.addEventListener('visibilitychange', () => { if(document.visibilityState==='visible' && S.wake && !S.wakeLock) requestWake(); });
+// Manche Browser (Safari) brauchen eine Berührung – beim ersten Tippen nachholen
+document.addEventListener('pointerdown', () => { if(S.wake && !S.wakeLock) requestWake(); }, {passive:true});
+
+/* ---------- Sperre ---------- */
+function lockOn(){
+  $('lock').classList.add('show');
+  if(S.wake && !S.wakeLock) requestWake();
+  renderLock();
+  store.set('locked', true);
+}
+function lockOff(){ $('lock').classList.remove('show'); store.set('locked', false); toast('Entsperrt'); }
+$('btnLock').onclick = lockOn; $('wLock').onclick = lockOn;
+(() => {
+  const L = $('lock'), ring = $('ring'); let t0=0, raf=0;
+  const stop = () => { cancelAnimationFrame(raf); t0=0; ring.style.setProperty('--p','0%'); };
+  const step = () => { const p = Math.min(1,(performance.now()-t0)/2000); ring.style.setProperty('--p',(p*100)+'%'); if(p>=1){ stop(); lockOff(); } else raf=requestAnimationFrame(step); };
+  ring.addEventListener('pointerdown', e => { e.preventDefault(); t0=performance.now(); raf=requestAnimationFrame(step); });
+  ['pointerup','pointerleave','pointercancel'].forEach(ev => ring.addEventListener(ev, stop));
+  // Alle anderen Eingaben schlucken
+  ['click','touchstart','touchmove','wheel','contextmenu','keydown'].forEach(ev => L.addEventListener(ev, e => { if(!ring.contains(e.target)) { e.preventDefault(); e.stopPropagation(); } }, {passive:false}));
+  window.addEventListener('keydown', e => { if(L.classList.contains('show')) { e.preventDefault(); e.stopPropagation(); } }, true);
+  // Nachts (22–6 Uhr) Sperrbildschirm etwas dunkler
+  setInterval(() => { const h=new Date().getHours(); L.classList.toggle('dim', h>=22||h<6); }, 30000);
+})();
+function renderLock(){
+  const t = S.t[S.cur]; if(!t) return;
+  $('lockPrice').textContent = money(t.last, S.cur);
+  const p = t.pct; $('lockChg').textContent = (p>=0?'▲ +':'▼ ')+fmt(p,2)+' % · 24 Std';
+  $('lockChg').style.color = p>=0 ? 'var(--up)' : 'var(--down)';
+}
+
+/* ---------- Vollbild ---------- */
+$('btnFull').onclick = async () => {
+  try{ if(!document.fullscreenElement) await document.documentElement.requestFullscreen(); else await document.exitFullscreen(); }
+  catch(e){ toast('Vollbild wird hier nicht unterstützt'); }
+};
+
+/* ---------- Widget ---------- */
+function setWidget(on){ document.body.classList.toggle('widget', on); store.set('widget', on); try{ history.replaceState(null,'', on ? '#widget' : location.pathname); }catch(e){} drawAll(); }
+$('btnWidget').onclick = () => setWidget(true);
+$('wBack').onclick = () => setWidget(false);
+$('wHelp').onclick = () => $('help').classList.add('show');
+$('helpClose').onclick = () => $('help').classList.remove('show');
+
+/* ---------- Auswahl Währung / Zeitraum ---------- */
+function bindSeg(id, attr, key, cb){
+  const seg = $(id);
+  seg.querySelectorAll('button').forEach(b => {
+    b.classList.toggle('act', b.dataset[attr]===S[key]);
+    b.onclick = () => { S[key]=b.dataset[attr]; store.set(key,S[key]); seg.querySelectorAll('button').forEach(x=>x.classList.toggle('act',x===b)); cb(); };
+  });
+}
+bindSeg('curSeg','c','cur', () => { renderTicker(); loadCandles(); });
+bindSeg('tfSeg','tf','tf', loadCandles);
+
+/* ---------- Live-Kurs (Binance WebSocket + Ersatz) ---------- */
+const SYM = { EUR:'BTCEUR', USD:'BTCUSDT' };
+function parseTicker(d){ return { last:+d.c, open:+d.o, hi:+d.h, lo:+d.l, vol:+d.q, pct:+d.P }; }
+let ws=null, wsTimer=null, lastMsg=0;
+function connectWS(){
+  try{ ws && ws.close(); }catch(e){}
+  try{ ws = new WebSocket('wss://stream.binance.com:9443/stream?streams=btceur@ticker/btcusdt@ticker'); }
+  catch(e){ startPolling(); return; }
+  ws.onmessage = ev => {
+    const m = JSON.parse(ev.data); const d = m.data; if(!d) return;
+    const c = d.s==='BTCEUR' ? 'EUR' : 'USD';
+    S.t[c] = parseTicker(d); lastMsg = Date.now(); setLive(true); setErr('price');
+    if(c===S.cur) renderTicker(); else renderConverter();
+  };
+  ws.onclose = () => { setLive(false); clearTimeout(wsTimer); wsTimer = setTimeout(connectWS, 4000); };
+  ws.onerror = () => { try{ ws.close(); }catch(e){} };
+}
+let pollH=null;
+function startPolling(){ if(pollH) return; pollTick(); pollH=setInterval(pollTick, 10000); }
+async function pollTick(){
+  try{
+    const arr = await getJSON('https://api.binance.com/api/v3/ticker/24hr?symbols=%5B%22BTCEUR%22,%22BTCUSDT%22%5D');
+    arr.forEach(d => { S.t[d.symbol==='BTCEUR'?'EUR':'USD'] = { last:+d.lastPrice, open:+d.openPrice, hi:+d.highPrice, lo:+d.lowPrice, vol:+d.quoteVolume, pct:+d.priceChangePercent }; });
+    setLive(true); setErr('price'); renderTicker();
+  }catch(e){
+    // letzter Ersatz: CoinGecko
+    try{
+      const g = await getJSON('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=eur,usd&include_24hr_change=true&include_24hr_vol=true');
+      const b=g.bitcoin;
+      S.t.EUR = Object.assign({}, S.t.EUR||{}, { last:b.eur, pct:b.eur_24h_change, vol:b.eur_24h_vol });
+      S.t.USD = Object.assign({}, S.t.USD||{}, { last:b.usd, pct:b.usd_24h_change, vol:b.usd_24h_vol });
+      setLive(true); setErr('price'); renderTicker();
+    }catch(e2){ setLive(false); setErr('price','Kurs nicht erreichbar'); }
+  }
+}
+// Wächter: wenn der WebSocket 20 s stumm ist → auf Abfragen umschalten
+setInterval(() => { if(Date.now()-lastMsg > 20000) startPolling(); else if(pollH){ clearInterval(pollH); pollH=null; } }, 5000);
+
+function setLive(on){ $('liveDot').classList.toggle('live',on); $('liveTxt').textContent = on ? 'LIVE' : 'keine Verbindung'; }
+
+function renderTicker(){
+  const c=S.cur, t=S.t[c]; if(!t||!t.last) return;
+  const el=$('price');
+  if(S.lastPrice!=null && t.last!==S.lastPrice){
+    el.classList.remove('flash-up','flash-down'); void el.offsetWidth;
+    el.classList.add(t.last>S.lastPrice?'flash-up':'flash-down');
+    clearTimeout(el._h); el._h=setTimeout(()=>el.classList.remove('flash-up','flash-down'),700);
+  }
+  S.lastPrice=t.last;
+  el.textContent = money(t.last, c, t.last<1000?2:0);
+  const up = (t.pct||0) >= 0;
+  $('chg').className = 'chip '+(up?'up':'down');
+  $('chg').textContent = (up?'▲ +':'▼ ')+fmt(t.pct,2)+' %';
+  const o = c==='EUR'?'USD':'EUR'; const ot=S.t[o];
+  $('altPrice').textContent = ot&&ot.last ? '≈ '+money(ot.last,o) : '';
+  $('hi').textContent = money(t.hi,c); $('lo').textContent = money(t.lo,c); $('vol').textContent = big(t.vol,c);
+  $('lastUp').textContent = new Date().toLocaleTimeString('de-DE');
+  // Live-Kerze im Chart mitziehen
+  if(S.candles.length){ const L=S.candles[S.candles.length-1]; L.c=t.last; if(t.last>L.h)L.h=t.last; if(t.last<L.l)L.l=t.last; }
+  document.title = money(t.last,c)+' · BTC-Terminal';
+  renderConverter(); renderWidget(); renderLock(); drawAll();
+}
+function renderConverter(){
+  const e=S.t.EUR&&S.t.EUR.last, u=S.t.USD&&S.t.USD.last;
+  $('satEur').textContent = e ? fmt(1e8/e,0)+' sats' : '—';
+  $('satUsd').textContent = u ? fmt(1e8/u,0)+' sats' : '—';
+  $('eur100').textContent = e ? fmt(100/e,6)+' BTC' : '—';
+  $('btc001').textContent = e ? money(e*0.01,'EUR') : '—';
+}
+function renderWidget(){
+  const c=S.cur, t=S.t[c]; if(!t) return;
+  $('wCur').textContent=c; $('wPrice').textContent=money(t.last,c);
+  const up=(t.pct||0)>=0; $('wChg').textContent=(up?'▲ +':'▼ ')+fmt(t.pct,2)+' % · 24h'; $('wChg').style.color=up?'var(--up)':'var(--down)';
+  $('wRange').textContent = t.lo ? 'T '+fmt(t.lo,0)+' · H '+fmt(t.hi,0) : '';
+}
+
+/* ---------- Kerzen für Chart ---------- */
+const TF = { '1d':['15m',96], '7d':['2h',84], '30d':['8h',90], '1y':['3d',122] };
+async function loadCandles(){
+  const [iv, n] = TF[S.tf];
+  try{
+    const k = await getJSON(`https://api.binance.com/api/v3/klines?symbol=${SYM[S.cur]}&interval=${iv}&limit=${n}`);
+    S.candles = k.map(r => ({ t:r[0], o:+r[1], h:+r[2], l:+r[3], c:+r[4] }));
+    setErr('chart'); drawAll();
+  }catch(e){ setErr('chart','Chart nicht erreichbar'); }
+}
+setInterval(loadCandles, 60000);
+
+/* ---------- Zeichnen ---------- */
+function css(v){ return getComputedStyle(document.documentElement).getPropertyValue(v).trim(); }
+function prep(cv){
+  const r = cv.getBoundingClientRect(); const dpr = window.devicePixelRatio||1;
+  if(!r.width) return null;
+  cv.width = r.width*dpr; cv.height = r.height*dpr;
+  const g = cv.getContext('2d'); g.setTransform(dpr,0,0,dpr,0,0); return {g, w:r.width, h:r.height};
+}
+function drawLine(cv, withAxis){
+  const P = prep(cv); if(!P || S.candles.length<2) return;
+  const {g,w,h} = P; const d = S.candles;
+  const padR = withAxis?62:4, padT=8, padB = withAxis?20:4;
+  const lo = Math.min(...d.map(x=>x.l)), hi = Math.max(...d.map(x=>x.h));
+  const rng = (hi-lo)||1;
+  const X = i => i/(d.length-1)*(w-padR);
+  const Y = v => padT + (1-(v-lo)/rng)*(h-padT-padB);
+  const up = d[d.length-1].c >= d[0].o;
+  const col = up ? css('--up') : css('--down');
+  if(withAxis){
+    g.strokeStyle = css('--grid'); g.lineWidth=1; g.fillStyle = css('--mut'); g.font='11px JetBrains Mono, monospace'; g.textAlign='left';
+    for(let i=0;i<=4;i++){ const v = lo + rng*i/4; const y=Y(v); g.beginPath(); g.moveTo(0,y); g.lineTo(w-padR,y); g.stroke(); g.fillText(fmt(v,0), w-padR+6, y+4); }
+    g.textAlign='center';
+    const tf=S.tf;
+    [0, .33, .66, 1].forEach(f => { const i=Math.round(f*(d.length-1)); const dt=new Date(d[i].t);
+      const s = tf==='1d' ? dt.toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'}) : tf==='1y' ? dt.toLocaleDateString('de-DE',{month:'short',year:'2-digit'}) : dt.toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit'});
+      g.fillText(s, Math.min(Math.max(X(i),20), w-padR-20), h-4); });
+  }
+  const grad = g.createLinearGradient(0,padT,0,h-padB);
+  grad.addColorStop(0, col+'55'); grad.addColorStop(1, col+'00');
+  g.beginPath(); d.forEach((p,i)=>{ i?g.lineTo(X(i),Y(p.c)):g.moveTo(X(i),Y(p.c)); });
+  g.lineTo(X(d.length-1),h-padB); g.lineTo(0,h-padB); g.closePath(); g.fillStyle=grad; g.fill();
+  g.beginPath(); d.forEach((p,i)=>{ i?g.lineTo(X(i),Y(p.c)):g.moveTo(X(i),Y(p.c)); });
+  g.strokeStyle=col; g.lineWidth=2; g.lineJoin='round'; g.stroke();
+  // aktueller Punkt
+  const lx=X(d.length-1), ly=Y(d[d.length-1].c);
+  g.beginPath(); g.arc(lx,ly,4,0,Math.PI*2); g.fillStyle=col; g.fill();
+  if(withAxis){
+    g.setLineDash([3,3]); g.strokeStyle=col; g.beginPath(); g.moveTo(0,ly); g.lineTo(w-padR,ly); g.stroke(); g.setLineDash([]);
+    g.fillStyle=col; g.fillRect(w-padR+2, ly-9, padR-2, 18); g.fillStyle='#fff'; g.textAlign='left'; g.font='bold 11px JetBrains Mono, monospace';
+    g.fillText(fmt(d[d.length-1].c,0), w-padR+6, ly+4);
+  }
+}
+function drawAll(){
+  if(document.body.classList.contains('widget')) drawLine($('wChart'), false);
+  else drawLine($('chart'), true);
+}
+window.addEventListener('resize', drawAll);
+
+/* ---------- Angst & Gier ---------- */
+const FNG = { 'Extreme Fear':'Extreme Angst', 'Fear':'Angst', 'Neutral':'Neutral', 'Greed':'Gier', 'Extreme Greed':'Extreme Gier' };
+async function loadFng(){
+  try{
+    const r = await getJSON('https://api.alternative.me/fng/?limit=1'); const d=r.data[0]; const v=+d.value;
+    $('fng').textContent=v; $('fngTxt').textContent = FNG[d.value_classification]||d.value_classification;
+    $('needle').style.transform = `rotate(${(v/100)*180-90}deg)`;
+    $('fng').style.color = v<25?'var(--down)':v<45?'#fb923c':v<55?'var(--yellow)':v<75?'#84cc16':'var(--up)';
+    setErr('fng');
+  }catch(e){ $('fngTxt').textContent='nicht erreichbar'; }
+}
+
+/* ---------- Markt (CoinGecko) ---------- */
+async function loadMarket(){
+  try{
+    const g = (await getJSON('https://api.coingecko.com/api/v3/global')).data;
+    const dom = g.market_cap_percentage.btc; const totE = g.total_market_cap.eur;
+    $('dom').textContent = fmt(dom,1)+' %'; $('domBar').style.width = dom+'%';
+    $('total').textContent = big(totE,'EUR');
+    $('mcap').textContent = big(totE*dom/100,'EUR');
+  }catch(e){ /* still */ }
+}
+
+/* ---------- Netzwerk (mempool.space) ---------- */
+const HALVING = 1050000;
+async function loadChain(){
+  try{
+    const [h, f] = await Promise.all([
+      fetch('https://mempool.space/api/blocks/tip/height',{cache:'no-store'}).then(r=>r.text()),
+      getJSON('https://mempool.space/api/v1/fees/recommended')
+    ]);
+    S.height = +h;
+    $('height').textContent = fmt(S.height,0);
+    $('feeF').textContent = f.fastestFee+' sat/vB'; $('feeM').textContent = f.halfHourFee+' sat/vB'; $('feeS').textContent = f.economyFee+' sat/vB';
+    const left = HALVING - S.height; const mins = left*10; const when = new Date(Date.now()+mins*60000);
+    $('halvDays').textContent = fmt(Math.floor(mins/1440),0)+' Tage';
+    $('halvDate').textContent = '≈ '+when.toLocaleDateString('de-DE',{month:'long',year:'numeric'});
+    $('halvBlocks').textContent = 'noch '+fmt(left,0)+' Blöcke';
+    $('halvBar').style.width = (((210000-left)/210000)*100).toFixed(1)+'%';
+  }catch(e){ /* still */ }
+}
+
+/* ---------- Uhr ---------- */
+function tick(){
+  const n=new Date();
+  $('clock').textContent = n.toLocaleTimeString('de-DE');
+  $('date').textContent = n.toLocaleDateString('de-DE',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  const hm = n.toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'});
+  $('lockTime').textContent = hm; $('wTime').textContent = hm;
+}
+
+/* ---------- Start ---------- */
+applyTheme(store.get('theme','dark'));
+if(location.hash==='#widget' || store.get('widget',false)) setWidget(true);
+tick(); setInterval(tick, 1000);
+connectWS(); pollTick();
+loadCandles(); loadFng(); loadMarket(); loadChain();
+setInterval(loadFng, 15*60000); setInterval(loadMarket, 5*60000); setInterval(loadChain, 60000);
+if(S.wake) requestWake();
+updateWakeUI();
+if(store.get('locked',false)) lockOn();
+})();
+</script>
+</body>
+</html>
